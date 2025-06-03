@@ -2,6 +2,48 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 
 // Get all transactions for user
+// Add money to user account
+const addMoney = async (req, res, next) => {
+  try {
+    const { amount, description = 'Nạp tiền vào tài khoản' } = req.body;
+    const numAmount = parseFloat(amount);
+
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Số tiền phải lớn hơn 0'
+      });
+    }
+
+    // Create income transaction
+    const transaction = new Transaction({
+      userId: req.user._id,
+      type: 'income',
+      amount: numAmount,
+      category: 'other',
+      description: description
+    });
+    
+    await transaction.save();
+
+    // Update user balance
+    const user = await User.findById(req.user._id);
+    user.totalBalance += numAmount;
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Nạp tiền thành công',
+      data: {
+        transaction,
+        newBalance: user.totalBalance
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getTransactions = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, category, type, startDate, endDate } = req.query;
@@ -212,5 +254,6 @@ module.exports = {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  getStatistics
+  getStatistics,
+  addMoney
 };

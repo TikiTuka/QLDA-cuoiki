@@ -5,7 +5,8 @@ const {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  getStatistics
+  getStatistics,
+  addMoney
 } = require('../controllers/transactionController');
 const authMiddleware = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
@@ -34,6 +35,17 @@ const idValidation = [
   param('id').isMongoId().withMessage('ID không hợp lệ')
 ];
 
+// Add money validation
+const addMoneyValidation = [
+  body('amount')
+    .isFloat({ min: 0.01 })
+    .withMessage('Số tiền phải lớn hơn 0'),
+  body('description')
+    .optional()
+    .isLength({ max: 200 })
+    .withMessage('Mô tả không được quá 200 ký tự')
+];
+
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
@@ -41,6 +53,7 @@ router.use(authMiddleware);
 router.get('/', getTransactions);
 router.get('/statistics', getStatistics);
 router.post('/', transactionValidation, validateRequest, createTransaction);
+router.post('/add-money', addMoneyValidation, validateRequest, addMoney);
 router.put('/:id', idValidation, transactionValidation, validateRequest, updateTransaction);
 router.delete('/:id', idValidation, validateRequest, deleteTransaction);
 

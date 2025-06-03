@@ -30,8 +30,12 @@ const register = async (req, res, next) => {
     }
 
     // Create new user
-    const user = new User({ name, email, password });
+    const user = new User({ name, email, password, isActive: true });
     await user.save();
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     // Generate token
     const token = generateToken(user);
@@ -40,7 +44,7 @@ const register = async (req, res, next) => {
       success: true,
       message: 'Đăng ký thành công',
       data: {
-        user,
+        user: userResponse,
         token
       }
     });
@@ -55,11 +59,19 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     // Find user and include password for comparison
-    const user = await User.findOne({ email, isActive: true }).select('+password');
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Email hoặc mật khẩu không đúng'
+      });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Tài khoản đã bị vô hiệu hóa'
       });
     }
 
@@ -75,14 +87,15 @@ const login = async (req, res, next) => {
     // Generate token
     const token = generateToken(user);
 
-    // Remove password from user object
-    user.password = undefined;
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     res.json({
       success: true,
       message: 'Đăng nhập thành công',
       data: {
-        user,
+        user: userResponse,
         token
       }
     });
