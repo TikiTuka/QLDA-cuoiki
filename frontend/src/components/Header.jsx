@@ -4,7 +4,7 @@ export default function Header({ onLogin, onRegister, user }) {
     return (
         <header className="bg-blue-700 text-white px-8 py-4 flex justify-between items-center">
             <h1 className="m-0 text-2xl font-bold">
-                Quản Lý Tài Chính Cá Nhân
+                FinTrack
             </h1>
             <div>
                 {user ? (
