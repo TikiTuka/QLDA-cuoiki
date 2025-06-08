@@ -25,6 +25,8 @@ export default function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [userBalance, setUserBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [toast, setToast] = useState({ message: "", type: "info" });
 
   // Add Money Form State
@@ -222,6 +224,33 @@ export default function Dashboard({ user, onLogout }) {
       }
     } catch (err) {
       setToast({ message: "Đã xảy ra lỗi khi hoàn tác giao dịch", type: "error" });
+    }
+  };
+
+  const handleEditTransaction = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/api/transactions/${editingTransaction._id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editingTransaction),
+      });
+  
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setToast({ message: "Cập nhật giao dịch thành công", type: "success" });
+        setShowEditModal(false);
+        setEditingTransaction(null);
+        fetchUserData(); // Refresh data
+      } else {
+        setToast({ message: data.message || "Có lỗi xảy ra", type: "error" });
+      }
+    } catch (err) {
+      setToast({ message: "Đã xảy ra lỗi khi cập nhật giao dịch", type: "error" });
     }
   };
 
@@ -807,13 +836,25 @@ export default function Dashboard({ user, onLogout }) {
                             {formatCurrency(transaction.amount)}
                           </p>
                         </div>
-                        <button
-                          onClick={() => handleUndoTransaction(transaction._id, transaction.description)}
-                          className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded-md hover:bg-red-200 transition-colors"
-                          title="Hoàn tác giao dịch này"
-                        >
-                          Hoàn tác
-                        </button>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingTransaction(transaction);
+                              setShowEditModal(true);
+                            }}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-md hover:bg-blue-200 transition-colors"
+                            title="Chỉnh sửa giao dịch này"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleUndoTransaction(transaction._id, transaction.description)}
+                            className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded-md hover:bg-red-200 transition-colors"
+                            title="Hoàn tác giao dịch này"
+                          >
+                            Hoàn tác
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -833,6 +874,118 @@ export default function Dashboard({ user, onLogout }) {
         type={toast.type}
         onClose={() => setToast({ message: "", type: "info" })}
       />
+
+      {showEditModal && editingTransaction && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 animate-fadeIn">
+          <div className="bg-white p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 animate-slideUp">
+            <h3 className="text-xl font-semibold mb-6">Chỉnh sửa giao dịch</h3>
+            
+            <form onSubmit={handleEditTransaction} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Loại giao dịch
+                </label>
+                <select
+                  value={editingTransaction.type}
+                  onChange={(e) =>
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      type: e.target.value,
+                      category: e.target.value === "income" ? "salary" : "other",
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="expense">Chi tiêu</option>
+                  <option value="income">Thu nhập</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Số tiền (VNĐ)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={editingTransaction.amount}
+                  onChange={(e) =>
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      amount: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Danh mục
+                </label>
+                <select
+                  value={editingTransaction.category}
+                  onChange={(e) =>
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      category: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {(editingTransaction.type === "income"
+                    ? incomeCategories
+                    : expenseCategories
+                  ).map((cat) => (
+                    <option key={cat} value={cat}>
+                      {categoryLabels[cat]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mô tả
+                </label>
+                <input
+                  type="text"
+                  value={editingTransaction.description}
+                  onChange={(e) =>
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="submit"
+                  className="flex-1 py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Lưu thay đổi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTransaction(null);
+                  }}
+                  className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
