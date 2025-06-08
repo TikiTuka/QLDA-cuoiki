@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Header from '../components/Header';
 import Toast from '../components/Toast';
 import Dashboard from '../components/Dashboard';
+import { API_URL } from '../config';
 
 function HomePage({ user, onLogout, userBalance, transactions, onRefreshData }) {
   const infoRef = useRef(null);
@@ -192,7 +193,7 @@ export default function MainPage() {
   const fetchUserData = async (token) => {
     try {
       // Fetch user profile to get updated balance
-      const profileRes = await fetch("http://localhost:5000/api/auth/profile", {
+      const profileRes = await fetch(`${API_URL}/api/auth/profile`, {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -210,7 +211,7 @@ export default function MainPage() {
       }
 
       // Fetch recent transactions
-      const transactionsRes = await fetch("http://localhost:5000/api/transactions?limit=5", {
+      const transactionsRes = await fetch(`${API_URL}/api/transactions?limit=5`, {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -231,7 +232,7 @@ export default function MainPage() {
 
   const handleLogin = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginData),
@@ -282,7 +283,7 @@ export default function MainPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registerData),

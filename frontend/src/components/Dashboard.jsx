@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { API_URL } from '../config';
 import Toast from "./Toast";
+import { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -68,7 +69,7 @@ export default function Dashboard({ user, onLogout }) {
       const token = localStorage.getItem("token");
 
       // Fetch user profile
-      const profileRes = await fetch("http://localhost:5000/api/auth/profile", {
+      const profileRes = await fetch(`${API_URL}/api/auth/profile`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -84,7 +85,7 @@ export default function Dashboard({ user, onLogout }) {
 
       // Fetch transactions
       const transactionsRes = await fetch(
-        "http://localhost:5000/api/transactions",
+        `${API_URL}/api/transactions`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -125,7 +126,7 @@ export default function Dashboard({ user, onLogout }) {
       console.log("Sending add money request:", addMoneyData);
 
       const res = await fetch(
-        "http://localhost:5000/api/transactions/add-money",
+        `${API_URL}/api/transactions/add-money`,
         {
           method: "POST",
           headers: {
@@ -170,7 +171,7 @@ export default function Dashboard({ user, onLogout }) {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/transactions", {
+      const res = await fetch(`${API_URL}/api/transactions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -204,7 +205,7 @@ export default function Dashboard({ user, onLogout }) {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/transactions/${transactionId}`, {
+      const res = await fetch(`${API_URL}/api/transactions/${transactionId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
