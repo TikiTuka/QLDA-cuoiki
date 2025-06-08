@@ -62,12 +62,26 @@ export default function Dashboard({ user, onLogout }) {
     "other",
   ];
 
+  // Add these to your existing state declarations at the top
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Add loading state for add money form
+  const [isAddingMoney, setIsAddingMoney] = useState(false);
+
+  // Similarly for the transaction form
+  const [isCreatingTransaction, setIsCreatingTransaction] = useState(false);
+
+  // Thêm vào phần khai báo state
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
     fetchUserData();
   }, []);
 
   const fetchUserData = async () => {
     try {
+      setIsRefreshing(true);
       const token = localStorage.getItem("token");
 
       // Fetch user profile
@@ -105,20 +119,23 @@ export default function Dashboard({ user, onLogout }) {
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu:", err);
       setToast({ message: "Không thể tải dữ liệu", type: "error" });
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   const handleAddMoney = async (e) => {
     e.preventDefault();
-
-    // Client-side validation
-    const amount = parseFloat(addMoneyData.amount);
-    if (!addMoneyData.amount || isNaN(amount) || amount <= 0) {
-      setToast({ message: "Vui lòng nhập số tiền hợp lệ", type: "error" });
-      return;
-    }
-
+    setIsAddingMoney(true);
     try {
+      // Client-side validation
+      const amount = parseFloat(addMoneyData.amount);
+      if (!addMoneyData.amount || isNaN(amount) || amount <= 0) {
+        setToast({ message: "Vui lòng nhập số tiền hợp lệ", type: "error" });
+        return;
+      }
+
       const token = localStorage.getItem("token");
       if (!token) {
         setToast({ message: "Vui lòng đăng nhập lại", type: "error" });
@@ -166,11 +183,14 @@ export default function Dashboard({ user, onLogout }) {
         message: "Đã xảy ra lỗi khi nạp tiền: " + err.message,
         type: "error",
       });
+    } finally {
+      setIsAddingMoney(false);
     }
   };
 
   const handleCreateTransaction = async (e) => {
     e.preventDefault();
+    setIsCreatingTransaction(true);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/transactions`, {
@@ -197,6 +217,8 @@ export default function Dashboard({ user, onLogout }) {
       }
     } catch (err) {
       setToast({ message: "Đã xảy ra lỗi khi tạo giao dịch", type: "error" });
+    } finally {
+      setIsCreatingTransaction(false);
     }
   };
 
@@ -229,6 +251,7 @@ export default function Dashboard({ user, onLogout }) {
 
   const handleEditTransaction = async (e) => {
     e.preventDefault();
+    setIsEditing(true);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/transactions/${editingTransaction._id}`, {
@@ -239,7 +262,7 @@ export default function Dashboard({ user, onLogout }) {
         },
         body: JSON.stringify(editingTransaction),
       });
-  
+
       const data = await res.json();
       if (res.ok && data.success) {
         setToast({ message: "Cập nhật giao dịch thành công", type: "success" });
@@ -251,6 +274,8 @@ export default function Dashboard({ user, onLogout }) {
       }
     } catch (err) {
       setToast({ message: "Đã xảy ra lỗi khi cập nhật giao dịch", type: "error" });
+    } finally {
+      setIsEditing(false);
     }
   };
 
@@ -368,6 +393,31 @@ export default function Dashboard({ user, onLogout }) {
     return categoryLabels[mostPopular] || mostPopular;
   };
 
+  // Add this loading skeleton component
+  const LoadingSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Add this loading spinner component
+  const LoadingSpinner = () => (
+    <div className="flex items-center justify-center">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -392,16 +442,30 @@ export default function Dashboard({ user, onLogout }) {
         {/* Balance Card */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-6 text-white mb-8 shadow-lg">
           <h2 className="text-lg font-medium opacity-90">Số dư hiện tại</h2>
-          <p
-            className={`text-3xl font-bold mt-2 ${userBalance >= 0 ? "text-white" : "text-red-200"}`}
-          >
-            {formatCurrency(userBalance)}
-          </p>
+          {isLoading ? (
+            <div className="h-8 bg-blue-500/50 rounded w-1/3 mt-2 animate-pulse"></div>
+          ) : (
+            <p
+              className={`text-3xl font-bold mt-2 ${userBalance >= 0 ? "text-white" : "text-red-200"}`}
+            >
+              {formatCurrency(userBalance)}
+            </p>
+          )}
           <button
             onClick={fetchUserData}
-            className="mt-4 px-4 py-2 bg-white bg-opacity-20 text-indigo-600 font-bold rounded-lg hover:bg-opacity-30 transition-colors"
+            disabled={isRefreshing}
+            className="mt-4 px-4 py-2 bg-white bg-opacity-20 text-indigo-600 font-bold rounded-lg hover:bg-opacity-30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            Làm mới
+            {isRefreshing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Đang tải...</span>
+              </>
+            ) : (
+              <>
+                <span>Làm mới</span>
+              </>
+            )}
           </button>
         </div>
 
@@ -435,48 +499,59 @@ export default function Dashboard({ user, onLogout }) {
               <h3 className="text-xl font-semibold mb-4">
                 Tổng quan tài khoản
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-green-800">
-                    Thu nhập tháng này
-                  </h4>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(
-                      transactions
-                        .filter(
-                          (t) =>
-                            t.type === "income" &&
-                            new Date(t.date).getMonth() ===
-                              new Date().getMonth(),
-                        )
-                        .reduce((sum, t) => sum + t.amount, 0),
-                    )}
-                  </p>
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-gray-50 p-4 rounded-lg">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  ))}
                 </div>
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-red-800">
-                    Chi tiêu tháng này
-                  </h4>
-                  <p className="text-2xl font-bold text-red-600">
-                    {formatCurrency(
-                      transactions
-                        .filter(
-                          (t) =>
-                            t.type === "expense" &&
-                            new Date(t.date).getMonth() ===
-                              new Date().getMonth(),
-                        )
-                        .reduce((sum, t) => sum + t.amount, 0),
-                    )}
-                  </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-green-800">
+                      Thu nhập tháng này
+                    </h4>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(
+                        transactions
+                          .filter(
+                            (t) =>
+                              t.type === "income" &&
+                              new Date(t.date).getMonth() ===
+                                new Date().getMonth(),
+                          )
+                          .reduce((sum, t) => sum + t.amount, 0),
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-red-800">
+                      Chi tiêu tháng này
+                    </h4>
+                    <p className="text-2xl font-bold text-red-600">
+                      {formatCurrency(
+                        transactions
+                          .filter(
+                            (t) =>
+                              t.type === "expense" &&
+                              new Date(t.date).getMonth() ===
+                                new Date().getMonth(),
+                          )
+                          .reduce((sum, t) => sum + t.amount, 0),
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-800">Tổng giao dịch</h4>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {transactions.length}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-800">Tổng giao dịch</h4>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {transactions.length}
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -525,9 +600,17 @@ export default function Dashboard({ user, onLogout }) {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                  disabled={isAddingMoney}
+                  className="w-full py-2 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
-                  Nạp tiền
+                  {isAddingMoney ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <span>Nạp tiền</span>
+                  )}
                 </button>
               </form>
             </div>
@@ -625,15 +708,23 @@ export default function Dashboard({ user, onLogout }) {
 
                 <button
                   type="submit"
-                  className={`w-full py-2 px-4 font-medium rounded-lg transition-colors ${
+                  disabled={isCreatingTransaction}
+                  className={`w-full py-2 px-4 font-medium rounded-lg transition-colors flex items-center justify-center space-x-2 ${
                     transactionData.type === "income"
                       ? "bg-green-600 text-white hover:bg-green-700"
                       : "bg-red-600 text-white hover:bg-red-700"
-                  }`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {transactionData.type === "income"
-                    ? "Thêm thu nhập"
-                    : "Thêm chi tiêu"}
+                  {isCreatingTransaction ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <span>
+                      {transactionData.type === "income" ? "Thêm thu nhập" : "Thêm chi tiêu"}
+                    </span>
+                  )}
                 </button>
               </form>
             </div>
@@ -642,8 +733,16 @@ export default function Dashboard({ user, onLogout }) {
           {activeTab === "analytics" && (
             <div>
               <h3 className="text-xl font-semibold mb-6">Thống kê giao dịch</h3>
-
-              {transactions.length > 0 ? (
+              {isLoading ? (
+                <div className="space-y-8">
+                  <div className="bg-white p-6 rounded-lg border">
+                    <div className="h-80 bg-gray-100 animate-pulse rounded"></div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg border">
+                    <div className="h-80 bg-gray-100 animate-pulse rounded"></div>
+                  </div>
+                </div>
+              ) : transactions.length > 0 ? (
                 <div className="space-y-8">
                   {/* Monthly Overview Chart */}
                   <div className="bg-white p-6 rounded-lg border">
@@ -807,7 +906,9 @@ export default function Dashboard({ user, onLogout }) {
           {activeTab === "history" && (
             <div>
               <h3 className="text-xl font-semibold mb-4">Lịch sử giao dịch</h3>
-              {transactions.length > 0 ? (
+              {isLoading ? (
+                <LoadingSkeleton />
+              ) : transactions.length > 0 ? (
                 <div className="space-y-3">
                   {transactions.map((transaction) => (
                     <div
@@ -967,17 +1068,26 @@ export default function Dashboard({ user, onLogout }) {
               <div className="flex space-x-3 mt-6">
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={isEditing}
+                  className="flex-1 py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
-                  Lưu thay đổi
+                  {isEditing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <span>Lưu thay đổi</span>
+                  )}
                 </button>
                 <button
                   type="button"
+                  disabled={isEditing}
                   onClick={() => {
                     setShowEditModal(false);
                     setEditingTransaction(null);
                   }}
-                  className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   Hủy
                 </button>

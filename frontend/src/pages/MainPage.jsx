@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useRef } from "react";
 import Header from '../components/Header';
@@ -136,7 +135,8 @@ export default function MainPage() {
   const [userBalance, setUserBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
 
-  
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -169,11 +169,9 @@ export default function MainPage() {
     return "";
   };
 
-  // Add validation on input change
   const handleRegisterChange = (field, value) => {
     setRegisterData(prev => ({ ...prev, [field]: value }));
     
-    // Validate the changed field
     let error = "";
     switch (field) {
       case 'name':
@@ -192,7 +190,6 @@ export default function MainPage() {
 
   const fetchUserData = async (token) => {
     try {
-      // Fetch user profile to get updated balance
       const profileRes = await fetch(`${API_URL}/api/auth/profile`, {
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -204,13 +201,11 @@ export default function MainPage() {
         const profileData = await profileRes.json();
         if (profileData.success) {
           setUserBalance(profileData.data.totalBalance || 0);
-          // Update user in localStorage with latest data
           localStorage.setItem("user", JSON.stringify(profileData.data));
           setUser(profileData.data);
         }
       }
 
-      // Fetch recent transactions
       const transactionsRes = await fetch(`${API_URL}/api/transactions?limit=5`, {
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -231,6 +226,7 @@ export default function MainPage() {
   };
 
   const handleLogin = async () => {
+    setIsLoggingIn(true);
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
@@ -251,38 +247,36 @@ export default function MainPage() {
         setUserBalance(user.totalBalance || 0);
         setShowLogin(false);
         
-        // Clear login form
         setLoginData({ email: "", password: "" });
-        
-        // Fetch additional user data
         fetchUserData(token);
       } else {
         setToast({ message: data.message, type: "error" });
       }
     } catch (err) {
       setToast({ message: "Đã xảy ra lỗi khi đăng nhập: " + err, type: "error" });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const handleRegister = async () => {
-    // Validate all fields
-    const nameError = validateName(registerData.name);
-    const emailError = validateEmail(registerData.email);
-    const passwordError = validatePassword(registerData.password);
-
-    setRegisterErrors({
-      name: nameError,
-      email: emailError,
-      password: passwordError
-    });
-
-    // If any errors exist, don't proceed with registration
-    if (nameError || emailError || passwordError) {
-      setToast({ message: "Vui lòng kiểm tra lại thông tin đăng ký", type: "error" });
-      return;
-    }
-
+    setIsRegistering(true);
     try {
+      const nameError = validateName(registerData.name);
+      const emailError = validateEmail(registerData.email);
+      const passwordError = validatePassword(registerData.password);
+
+      setRegisterErrors({
+        name: nameError,
+        email: emailError,
+        password: passwordError
+      });
+
+      if (nameError || emailError || passwordError) {
+        setToast({ message: "Vui lòng kiểm tra lại thông tin đăng ký", type: "error" });
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -305,6 +299,8 @@ export default function MainPage() {
       }
     } catch (err) {
       setToast({ message: "Đã xảy ra lỗi khi đăng ký: " + err, type: "error" });
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -399,10 +395,18 @@ export default function MainPage() {
           
           <div className="flex space-x-3 mt-8">
             <button
-              className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               onClick={handleLogin}
+              disabled={isLoggingIn}
             >
-              Đăng nhập
+              {isLoggingIn ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Đang đăng nhập...</span>
+                </>
+              ) : (
+                <span>Đăng nhập</span>
+              )}
             </button>
             <button
               className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all duration-200"
@@ -410,6 +414,7 @@ export default function MainPage() {
                 setShowLogin(false);
                 setLoginData({ email: "", password: "" });
               }}
+              disabled={isLoggingIn}
             >
               Hủy
             </button>
@@ -421,7 +426,15 @@ export default function MainPage() {
 {showRegister && (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 animate-fadeIn">
         <div className="bg-white p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 animate-slideUp">
-          {/* ... existing header ... */}
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">Đăng ký</h3>
+            <p className="text-gray-500 mt-2">Chào mừng bạn đến với FinTrack!</p>
+          </div>
           
           <div className="space-y-4">
             <div>
@@ -490,11 +503,18 @@ export default function MainPage() {
           
           <div className="flex space-x-3 mt-8">
             <button
-              className="flex-1 py-3 px-6 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               onClick={handleRegister}
-              disabled={Object.values(registerErrors).some(error => error !== "")}
+              disabled={isRegistering || Object.values(registerErrors).some(error => error !== "")}
             >
-              Đăng ký
+              {isRegistering ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Đang xử lý...</span>
+                </>
+              ) : (
+                <span>Đăng ký</span>
+              )}
             </button>
             <button
               className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all duration-200"
@@ -503,6 +523,7 @@ export default function MainPage() {
                 setRegisterData({ name: "", email: "", password: "" });
                 setRegisterErrors({ name: "", email: "", password: "" });
               }}
+              disabled={isRegistering}
             >
               Hủy
             </button>
