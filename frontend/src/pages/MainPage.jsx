@@ -124,11 +124,18 @@ export default function MainPage() {
 
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [registerData, setRegisterData] = useState({ name: "", email: "", password: "" });
+  const [registerErrors, setRegisterErrors] = useState({
+    name: "",
+    email: "",
+    password: ""
+  });
   const [toast, setToast] = useState({ message: "", type: "info" });
 
   const [user, setUser] = useState(null);
   const [userBalance, setUserBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
+
+  
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -138,6 +145,49 @@ export default function MainPage() {
       fetchUserData(savedToken);
     }
   }, []);
+
+  const validateName = (name) => {
+    if (!name.trim()) return "Họ tên không được để trống";
+    if (name.length < 2) return "Họ tên phải có ít nhất 2 ký tự";
+    return "";
+  };
+
+  const validateEmail = (email) => {
+    if (!email) return "Email không được để trống";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Email không hợp lệ";
+    return "";
+  };
+
+  const validatePassword = (password) => {
+    if (!password) return "Mật khẩu không được để trống";
+    if (password.length < 6) return "Mật khẩu phải có ít nhất 6 ký tự";
+    if (!/[A-Z]/.test(password)) return "Mật khẩu phải có ít nhất 1 chữ hoa";
+    if (!/[a-z]/.test(password)) return "Mật khẩu phải có ít nhất 1 chữ thường";
+    if (!/[0-9]/.test(password)) return "Mật khẩu phải có ít nhất 1 số";
+    return "";
+  };
+
+  // Add validation on input change
+  const handleRegisterChange = (field, value) => {
+    setRegisterData(prev => ({ ...prev, [field]: value }));
+    
+    // Validate the changed field
+    let error = "";
+    switch (field) {
+      case 'name':
+        error = validateName(value);
+        break;
+      case 'email':
+        error = validateEmail(value);
+        break;
+      case 'password':
+        error = validatePassword(value);
+        break;
+    }
+    
+    setRegisterErrors(prev => ({ ...prev, [field]: error }));
+  };
 
   const fetchUserData = async (token) => {
     try {
@@ -214,6 +264,23 @@ export default function MainPage() {
   };
 
   const handleRegister = async () => {
+    // Validate all fields
+    const nameError = validateName(registerData.name);
+    const emailError = validateEmail(registerData.email);
+    const passwordError = validatePassword(registerData.password);
+
+    setRegisterErrors({
+      name: nameError,
+      email: emailError,
+      password: passwordError
+    });
+
+    // If any errors exist, don't proceed with registration
+    if (nameError || emailError || passwordError) {
+      setToast({ message: "Vui lòng kiểm tra lại thông tin đăng ký", type: "error" });
+      return;
+    }
+
     try {
       const res = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
@@ -225,9 +292,8 @@ export default function MainPage() {
       if (res.ok && data.success) {
         setToast({ message: data.message, type: "success" });
         setShowRegister(false);
-        // Clear register form
         setRegisterData({ name: "", email: "", password: "" });
-        // Auto login after successful registration
+        setRegisterErrors({ name: "", email: "", password: "" });
         setLoginData({ email: registerData.email, password: registerData.password });
         setTimeout(() => {
           setToast({ message: "Đăng ký thành công! Đang đăng nhập...", type: "success" });
@@ -283,132 +349,167 @@ export default function MainPage() {
         onClose={() => setToast({ message: "", type: "info" })}
       />
 
-      {showLogin && (
-        <div className="fixed inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 bg-opacity-90 flex items-center justify-center z-40 backdrop-blur-sm">
-          <div className="bg-white p-10 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Đăng nhập</h3>
-              <p className="text-gray-600">Chào mừng bạn quay trở lại!</p>
+    {showLogin && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 animate-fadeIn">
+        <div className="bg-white p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 animate-slideUp">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Đăng nhập</h3>
+            <p className="text-gray-500 mt-2">Chào mừng bạn quay trở lại!</p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <div className="relative">
                 <input
                   type="email"
                   placeholder="Nhập email của bạn"
                   value={loginData.email}
                   onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors duration-200"
+                  className="w-full px-4 py-3 pl-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              <div className="relative">
                 <input
                   type="password"
                   placeholder="Nhập mật khẩu của bạn"
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors duration-200"
+                  className="w-full px-4 py-3 pl-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 />
-              </div>
-            </div>
-            
-            <div className="flex space-x-3 mt-8">
-              <button
-                className="flex-1 py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                onClick={handleLogin}
-              >
-                Đăng nhập
-              </button>
-              <button
-                className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200"
-                onClick={() => {
-                  setShowLogin(false);
-                  setLoginData({ email: "", password: "" });
-                }}
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRegister && (
-        <div className="fixed inset-0 bg-gradient-to-br from-green-600 via-teal-600 to-cyan-700 bg-opacity-90 flex items-center justify-center z-40 backdrop-blur-sm">
-          <div className="bg-white p-10 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Đăng ký</h3>
-              <p className="text-gray-600">Tạo tài khoản mới để bắt đầu!</p>
             </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
+          </div>
+          
+          <div className="flex space-x-3 mt-8">
+            <button
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+              onClick={handleLogin}
+            >
+              Đăng nhập
+            </button>
+            <button
+              className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all duration-200"
+              onClick={() => {
+                setShowLogin(false);
+                setLoginData({ email: "", password: "" });
+              }}
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+{showRegister && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 animate-fadeIn">
+        <div className="bg-white p-8 rounded-2xl w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300 animate-slideUp">
+          {/* ... existing header ... */}
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
+              <div className="relative">
                 <input
                   type="text"
                   placeholder="Nhập họ tên của bạn"
                   value={registerData.name}
-                  onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors duration-200"
+                  onChange={(e) => handleRegisterChange('name', e.target.value)}
+                  className={`w-full px-4 py-3 pl-10 border ${
+                    registerErrors.name ? 'border-red-500' : 'border-gray-200'
+                  } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200`}
                 />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              {registerErrors.name && (
+                <p className="mt-1 text-sm text-red-500">{registerErrors.name}</p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <div className="relative">
                 <input
                   type="email"
                   placeholder="Nhập email của bạn"
                   value={registerData.email}
-                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors duration-200"
+                  onChange={(e) => handleRegisterChange('email', e.target.value)}
+                  className={`w-full px-4 py-3 pl-10 border ${
+                    registerErrors.email ? 'border-red-500' : 'border-gray-200'
+                  } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200`}
                 />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              {registerErrors.email && (
+                <p className="mt-1 text-sm text-red-500">{registerErrors.email}</p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              <div className="relative">
                 <input
                   type="password"
                   placeholder="Tạo mật khẩu mạnh"
                   value={registerData.password}
-                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors duration-200"
+                  onChange={(e) => handleRegisterChange('password', e.target.value)}
+                  className={`w-full px-4 py-3 pl-10 border ${
+                    registerErrors.password ? 'border-red-500' : 'border-gray-200'
+                  } rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200`}
                 />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               </div>
-            </div>
-            
-            <div className="flex space-x-3 mt-8">
-              <button
-                className="flex-1 py-3 px-6 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                onClick={handleRegister}
-              >
-                Đăng ký
-              </button>
-              <button
-                className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200"
-                onClick={() => {
-                  setShowRegister(false);
-                  setRegisterData({ name: "", email: "", password: "" });
-                }}
-              >
-                Hủy
-              </button>
+              {registerErrors.password && (
+                <p className="mt-1 text-sm text-red-500">{registerErrors.password}</p>
+              )}
             </div>
           </div>
+          
+          <div className="flex space-x-3 mt-8">
+            <button
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleRegister}
+              disabled={Object.values(registerErrors).some(error => error !== "")}
+            >
+              Đăng ký
+            </button>
+            <button
+              className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all duration-200"
+              onClick={() => {
+                setShowRegister(false);
+                setRegisterData({ name: "", email: "", password: "" });
+                setRegisterErrors({ name: "", email: "", password: "" });
+              }}
+            >
+              Hủy
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+    )}
+
     </div>
   );
 }
